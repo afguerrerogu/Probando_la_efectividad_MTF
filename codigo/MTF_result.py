@@ -59,11 +59,14 @@ x_21 = 70; x_22 = 130; y_21 = 85; y_22 = 140; z_21 = 400; z_22 = 700
 x_31 = 40; x_32 = 100; y_31 = 125; y_32 = 190; z_31 = 680; z_32 = 1000
 
 zona = [slice(z_11, z_12, None), slice(y_11, y_12, None), slice(x_11, x_12, None)]
-binary_zona1 = j_mag_i[tuple(zona)] > 0.2
+#zona = [slice(z_21, z_22, None), slice(y_21, y_22, None), slice(x_21, x_22, None)]
+#zona = [slice(z_31, z_32, None), slice(y_31, y_32, None), slice(x_31, x_32, None)]
 
+binary_zona = j_mag_i[tuple(zona)] > 0.2
 #----------------------------------------------------------------
 
 path_11,path_12,path_13,path_14 = MTF.four_path(zona)
+
 
 B_11,E_11 = MTF.extract_data(hx_i, hy_i, hz_i,jx_i, jy_i, jz_i,path_11)
 B_12,E_12 = MTF.extract_data(hx_i, hy_i, hz_i,jx_i, jy_i, jz_i,path_12)
@@ -75,13 +78,15 @@ M_12, val_12, vec_12 = MTF.Magnetic_variance(B_12)
 M_13, val_13, vec_13 = MTF.Magnetic_variance(B_13)
 M_14, val_14, vec_14 = MTF.Magnetic_variance(B_14)
 
-U_psi_L, U_psi_N = MTF.U_psi(zona,vec_12,j_mag_i,jx_i,jy_i,jz_i,hx_i,hy_i,hz_i)
+vec = vec_14
+
+U_psi_L, U_psi_N = MTF.U_psi(zona,vec,j_mag_i,jx_i,jy_i,jz_i,hx_i,hy_i,hz_i)
 U_div1 = MTF.divergence(U_psi_L,U_psi_N,j_mag_i)
 
 log_U1_psi_N = ((U_psi_N/np.abs(U_psi_N))*np.log(1 + (np.abs(U_psi_N)/np.max(np.sqrt(U_psi_L*U_psi_L+U_psi_N*U_psi_N)))))
 log_U1_psi_L = ((U_psi_L/np.abs(U_psi_L))*np.log(1 + (np.abs(U_psi_L)/np.max(np.sqrt(U_psi_L*U_psi_L+U_psi_N*U_psi_N)))))
 
-Hl, Hm, Hn, Hmag = MTF.change_of_basis_zone(zona,vec_12,h_mag_i,hx_i,hy_i,hz_i)
+Hl, Hm, Hn, Hmag = MTF.change_of_basis_zone(zona,vec,h_mag_i,hx_i,hy_i,hz_i)
 
 #--------------------------------------------------------------------
 
@@ -156,7 +161,7 @@ plt.text(0, 0.055, txt_N.format(x_3 = vec_13[2][0],y_3= vec_13[2][1],z_3 = vec_1
 fig.tight_layout()
 
 ax4 = fig.add_subplot(rows, cols, 4)
-ax4.set_title(r"$path 3$")
+ax4.set_title(r"$path 4$")
 plt.plot(range(path_14.shape[0]),B_14[:,0],color="red",label=r"$H_{x}$")
 plt.plot(range(path_14.shape[0]),B_14[:,1],color="blue",label=r"$H_{y}$")
 plt.plot(range(path_14.shape[0]),B_14[:,2],color="k",label=r"$H_{z}$")
@@ -196,7 +201,7 @@ def update(frame):
 
     x, y = np.meshgrid(np.arange(0, hx.shape[1]), np.arange(0, hy.shape[0]))
 
-    contours = find_contours(binary_zona1[frame, :, :], 0.5)
+    contours = find_contours(binary_zona[frame, :, :], 0.5)
 
     axs[0][0].clear()
     axs[0][1].clear()
@@ -212,11 +217,11 @@ def update(frame):
     axs[0][1].set_title(r'$\nabla \cdot U_{\psi}$')
 
     # Display the second image in the second subplot
-    im3 = axs[1][0].imshow(log_U1_psi_N[tuple(zona)][frame, :, :], cmap='seismic',vmax=0.005,vmin=-0.005)  # Change the colormap if needed
+    im3 = axs[1][0].imshow(log_U1_psi_N[tuple(zona)][frame, :, :], cmap='seismic',vmax=0.05,vmin=-0.05)  # Change the colormap if needed
     axs[1][0].set_title(r'$U_{\psi, N}$')
 
     # Display the second image in the second subplot
-    im4 = axs[1][1].imshow(log_U1_psi_L[tuple(zona)][frame, :, :], cmap='seismic',vmax=0.005,vmin=-0.005)  # Change the colormap if needed
+    im4 = axs[1][1].imshow(log_U1_psi_L[tuple(zona)][frame, :, :], cmap='seismic',vmax=0.05,vmin=-0.05)  # Change the colormap if needed
     axs[1][1].set_title(r'$U_{\psi, L}$')
 
     # Plot streamlines
@@ -244,9 +249,9 @@ def update(frame):
 U_psi_animation = FuncAnimation(fig, update, frames=num_slices, interval=50)
 
 # Display animation
-HTML(U_psi_animation.to_jshtml())
+#HTML(U_psi_animation.to_jshtml())
 
 writervideo = animation.FFMpegWriter(fps=5)
 
-U_psi_animation.save('result_path2.mp4', writer=writervideo)
+U_psi_animation.save('result_path4.mp4', writer=writervideo)
 plt.close()
