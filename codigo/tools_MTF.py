@@ -13,6 +13,8 @@ from mpl_toolkits.mplot3d import Axes3D
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import matplotlib.colors as colors
+from matplotlib.animation import FuncAnimation
+from IPython.display import HTML, display
 
 
 # basis X, Y, Z
@@ -313,10 +315,10 @@ def plot_vectores(zona_1,vec_11,vec_12,vec_13,vec_14,binary_zona1):
 
   return None
 
-def U_psi(zona,vec):
+def U_psi(zona,vec,array,jx_i,jy_i,jz_i,hx_i,hy_i,hz_i):
 
-  U_psi_L = np.zeros(j_mag_i.shape)
-  U_psi_N = np.zeros(j_mag_i.shape)
+  U_psi_L = np.zeros(array.shape)
+  U_psi_N = np.zeros(array.shape)
 
   # Recorrer todos los elementos del arreglo
   for i in range(zona[0].start, zona[0].stop):
@@ -368,17 +370,31 @@ def plot_vectores_3d(zona, vec11, vec12, vec13, vec14, binary_zona, path_11, pat
     center_y = (zona[1].start + zona[1].stop) / 2
     center_z = (zona[2].start + zona[2].stop) / 2
 
-    vectors = [vec11, vec12, vec13, vec14]
     colors = ['black', 'blue', 'red', 'green']
-
+    mark = ["solid","longdashdot","dashdot"]
+    vectors = [vec11, vec12, vec13, vec14]
+    colors_l = ['silver', 'cornflowerblue', 'lightcoral', 'lightgreen']
     for i, vec_group in enumerate(vectors):
-        for ve in vec_group:
+        for j,ve in enumerate(vec_group):
             fig.add_trace(go.Scatter3d(
                 x=[center_x, center_x + ve[2] * 20],
                 y=[center_y, center_y + ve[1] * 20],
                 z=[center_z, center_z + ve[0] * 20],
                 mode='lines',
-                line=dict(color=colors[i],width=5),
+                line=dict(color=colors_l[i], width=5),
+                #line=dict(color=colors[i],width=5),
+                showlegend=False
+            ))
+
+    for i, vec_group in enumerate(vectors):
+        for j,ve in enumerate(vec_group):
+            fig.add_trace(go.Scatter3d(
+                x=[center_x, center_x + ve[2] * 20],
+                y=[center_y, center_y + ve[1] * 20],
+                z=[center_z, center_z + ve[0] * 20],
+                mode='lines',
+                line=dict(color=colors[i], width=7, dash=mark[j]),
+                #line=dict(color=colors[i],width=5),
                 showlegend=False
             ))
 
@@ -439,7 +455,7 @@ def plot_vectores_3d(zona, vec11, vec12, vec13, vec14, binary_zona, path_11, pat
         y=[point[1] for point in path_14],
         z=[point[2] for point in path_14],
         mode='markers',
-        marker=dict(size=3, color='green',opacity=0.2),
+        marker=dict(size=3, color='green',opacity=0.15),
         showlegend=False
     ))
 
@@ -456,6 +472,7 @@ def plot_vectores_3d(zona, vec11, vec12, vec13, vec14, binary_zona, path_11, pat
     fig.show()
 
     return None
+
 
 def change_of_basis_zone(zona,vec,array,array_x,array_y,array_z):
 
@@ -484,10 +501,123 @@ def divergence(U_psi_L,U_psi_N,array):
   w = U_psi_N
 
   # Calculate the partial derivatives
-  du_dx, _, _ = np.gradient(u)
-  _, dv_dy, _ = np.gradient(v)
-  _, _, dw_dz = np.gradient(w)
+  du_dx = np.gradient(u,0.06,axis=0)
+  dv_dy = np.gradient(v,0.06,axis=1)
+  dw_dz = np.gradient(w,0.06,axis=2)
 
   # Calculate the divergence
-  div = du_dx + dv_dy + dw_dz
+  div = np.add.reduce([du_dx, dv_dy, dw_dz])
   return div
+
+
+def animation_zones(array, zona_i):
+
+  # Initialize figure and axis
+  fig, ax = plt.subplots()
+
+  # Set number of slices to animate
+  num_slices = array[zona_i].shape[0]
+
+  # Define update function for animation
+  def update(frame):
+      ax.clear()
+      ax.imshow(array[zona_i][frame, :, :], cmap='seismic')
+      ax.set_title("Slice {}".format(frame))
+
+  # Create animation
+  anim = FuncAnimation(fig, update, frames=num_slices, interval=50)
+
+  return anim
+
+def figure_path_3d(zona_i,vec,path,binary_zona,name,color="red"):
+  fig = go.Figure()
+
+  center_x = (zona_i[0].start + zona_i[0].stop) / 2
+  center_y = (zona_i[1].start + zona_i[1].stop) / 2
+  center_z = (zona_i[2].start + zona_i[2].stop) / 2
+
+  labels = ['L', 'M', 'N']
+  for i, label in enumerate(labels):
+        fig.add_trace(go.Scatter3d(
+            x=[center_x, center_x + vec[i][2] * 30],
+            y=[center_y, center_y + vec[i][1] * 30],
+            z=[center_z, center_z + vec[i][0] * 30],
+            mode='text',
+            text=label,
+            textposition='top center',
+            textfont=dict(size=12, color='black'),
+            showlegend=False
+        ))
+
+  binary_zona_coords = np.array(np.where(binary_zona)).T.astype(float)
+  binary_zona_coords[:, :3] += np.array([zona_i[0].start, zona_i[1].start, zona_i[2].start])
+
+  fig.add_trace(go.Scatter3d(
+        x=binary_zona_coords[:, 0],
+        y=binary_zona_coords[:, 1],
+        z=binary_zona_coords[:, 2],
+        mode='markers',
+        marker=dict(size=3, color='blue', opacity=0.05),
+        showlegend=False
+    ))
+
+    # Agregar los scatter plots de los paths
+  fig.add_trace(go.Scatter3d(
+        x=[point[0] for point in path],
+        y=[point[1] for point in path],
+        z=[point[2] for point in path],
+        mode='markers',
+        marker=dict(size=2, color=color,opacity=0.5),
+        showlegend=False
+    ))
+
+  for j,ve in enumerate(vec):
+            fig.add_trace(go.Scatter3d(
+                x=[center_x, center_x + ve[2] * 20],
+                y=[center_y, center_y + ve[1] * 20],
+                z=[center_z, center_z + ve[0] * 20],
+                mode='lines',
+                line=dict(color="red", width=5),
+                #line=dict(color=colors[i],width=5),
+                showlegend=False
+            ))
+
+  fig.update_layout(
+        scene=dict(
+            xaxis=dict(title='Z'),
+            yaxis=dict(title='Y'),
+            zaxis=dict(title='X'),
+            aspectmode='data',
+        ),
+        showlegend=False
+    )
+  fig.show()
+
+
+  # Create an animation scene
+  frames = [go.Frame(data=[go.Scatter3d(x=[point[0] for point in path[:i]],
+                                     y=[point[1] for point in path[:i]],
+                                     z=[point[2] for point in path[:i]],
+                                     mode='markers',
+                                     marker=dict(size=2, color=color, opacity=0.5),
+                                     showlegend=False
+                                     )],
+                  name=str(i)
+                  )
+          for i in range(1, len(path) + 1)]
+
+  # Add frames to the layout
+  fig.update(frames=frames)
+
+  # Create an animation configuration
+  animation_settings = dict(frame=dict(duration=100, redraw=True), fromcurrent=True)
+
+  # Update layout to enable animation and specify animation settings
+  fig.update_layout(updatemenus=[dict(type='buttons', showactive=False, buttons=[dict(label='Play',
+                                                                                method='animate',
+                                                                                args=[None,
+                                                                                      animation_settings])])])
+
+  # Save the animation as an HTML file
+  fig.write_html(name+'.html')
+  return None
